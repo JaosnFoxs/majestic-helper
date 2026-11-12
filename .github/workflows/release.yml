@@ -1,0 +1,47 @@
+name: Release
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', 'main.js', 'package.json', 'scripts/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm test
+      - name: Previous snapshot
+        shell: pwsh
+        run: |
+          try { Invoke-WebRequest "https://github.com/${{ github.repository }}/releases/download/data/snapshot.json" -OutFile app/snapshot.json } catch { Write-Host "no previous snapshot" }
+      - name: Fresh snapshot
+        continue-on-error: true
+        run: npm run snapshot
+      - run: node scripts/pack.js
+      - name: Zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/MajesticHelper -DestinationPath dist/MajesticHelper-win64.zip
+          Compress-Archive -Path dist/update/app -DestinationPath dist/app.zip
+      - name: Version
+        id: v
+        shell: pwsh
+        run: |
+          $v = (Get-Content app/version.json -Raw | ConvertFrom-Json).version
+          "version=$v" >> $env:GITHUB_OUTPUT
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.v.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Majestic Helper ${{ steps.v.outputs.version }}
+          make_latest: true
+          files: |
+            dist/MajesticHelper-win64.zip
+            dist/app.zip
+            dist/version.json
