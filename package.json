@@ -1,0 +1,15 @@
+{
+  "name": "majestic-helper",
+  "version": "0.4.0",
+  "description": "Оверлей-памятка по законам и правилам Majestic RP",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/core.test.js",
+    "snapshot": "electron . --snapshot",
+    "pack": "node scripts/pack.js"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<title>Majestic Helper</title>
+<style>
+:root{--bg:#12161f;--panel:#1a2030;--line:#2a3347;--text:#e6e9f0;--mut:#8b95ab;--acc:#ffb454;--sel:#232c42;--pin:#5ec8a8;--bad:#ff7a7a}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;overflow:hidden}
+button,input,textarea,select{font:inherit;color:inherit}
+#app{display:flex;flex-direction:column;height:100%}
+#top{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);-webkit-app-region:drag}
+#top>*{-webkit-app-region:no-drag}
+#q{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:15px;outline:none}
+#q:focus{border-color:var(--acc)}
+.tabs{display:flex;background:var(--panel);border-radius:8px;padding:3px}
+.tab{background:none;border:0;padding:5px 12px;border-radius:6px;cursor:pointer;color:var(--mut)}
+.tab.on{background:var(--sel);color:var(--text)}
+.ib{background:var(--panel);border:1px solid var(--line);border-radius:8px;width:34px;height:34px;cursor:pointer;color:var(--mut)}
+.ib:hover{color:var(--text)}
+#main{flex:1;display:flex;min-height:0}
+#list{width:34%;min-width:230px;overflow:auto;border-right:1px solid var(--line);padding:6px}
+.it{padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px}
+.it:hover{background:#1d2538}.it.sel{background:var(--sel)}
+.it .h{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.it .h small{color:var(--mut);font-weight:400}
+.it .t{color:var(--mut);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.st{color:var(--acc);letter-spacing:1px;font-size:12px}
+#det{flex:1;overflow:auto;padding:16px 22px}
+#det h2{margin:0 0 2px;font-size:22px}
+#det .meta{color:var(--mut);margin-bottom:12px}
+#det p{margin:0 0 9px;max-width:78ch}
+#det p.lead{font-weight:600;font-size:15px}
+#det p.pen{color:var(--acc);font-weight:600}
+#det p.note{color:var(--mut)}
+.row{display:flex;gap:8px;margin:12px 0}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--mut)}.btn.on{border-color:var(--pin);color:var(--pin)}
+mark{background:#ffb45433;color:inherit;border-radius:3px;padding:0 1px}
+.warn{color:var(--bad);font-size:13px}
+.empty{color:var(--mut);padding:24px 16px}
+#bar{display:flex;justify-content:space-between;gap:12px;padding:5px 12px;border-top:1px solid var(--line);color:var(--mut);font-size:12px}
+#bar span:last-child{cursor:help;white-space:nowrap}
+#modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center}
+#modal.on{display:flex}
+#box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;width:min(560px,92vw);max-height:90vh;overflow:auto}
+#box label{display:block;margin:10px 0 4px;color:var(--mut)}
+#box input,#box textarea,#box select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+#box textarea{height:90px;resize:vertical}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+</style></head>
+<body><div id="app">
+ <div id="top">
+  <input id="q" placeholder="Статья, слово или номер: «17.3», «лидер выговоры», «ук оскорбление»" autocomplete="off" spellcheck="false">
+  <div class="tabs"><button class="tab on" data-t="law">Законы</button><button class="tab" data-t="rule">Правила</button><button class="tab" data-t="pins">Памятка <span id="pc"></span></button></div>
+  <button class="ib" id="rf" title="Обновить с сайта">⟳</button>
+  <button class="ib" id="gear" title="Настройки">⚙</button>
+  <button class="ib" id="min" title="Скрыть (Esc)">—</button>
+  <button class="ib" id="x" title="Закрыть приложение">✕</button>
+ </div>
+ <div id="main"><div id="list"></div><div id="det"></div></div>
+ <div id="bar"><span><span id="msg"></span> <button class="btn" id="ub" style="display:none;padding:1px 10px">Обновить</button></span><span id="upd"></span></div>
+</div>
+<div id="modal"><div id="box">
+ <b>Настройки</b>
+ <label>Сервер (адрес на docossum.com/legal/…)</label><input id="s-server">
+ <label>Откуда брать законы</label>
+ <select id="s-src"><option value="docossum">docossum.com (быстро, синхронизируется с форумом)</option><option value="forum">Прямо с форума Majestic (первоисточник, медленнее)</option></select>
+ <label>Правила — по одной ссылке на строку: «Название | ссылка на тему форума»</label><textarea id="s-rules" placeholder="ПЛФ | https://forum.majestic-rp.ru/threads/..."></textarea>
+ <label>Горячая клавиша показать/скрыть (нажмите сочетание)</label><input id="s-key" readonly>
+ <label>Ссылка на автообновления (необязательно, папка с version.json и app.zip)</label><input id="s-upurl" placeholder="https://github.com/ВАШ_НИК/РЕПО/releases/latest/download/">
+ <div class="row"><button class="btn" id="s-upfile">Установить обновление из файла…</button></div>
+ <label>Прозрачность окна</label><input id="s-op" type="range" min="0.5" max="1" step="0.01">
+ <label>Где хранятся данные (кэш, памятка, настройки)</label><input id="s-path" readonly>
+ <div class="row"><button class="btn" id="s-open">Открыть папку</button><button class="btn" id="s-clear">Очистить кэш законов</button></div>
+ <div class="row"><button class="btn" id="s-save">Сохранить</button><button class="btn" id="s-cancel">Отмена</button></div>
+</div></div>
+<script src="core.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let VER = '', DIR = '', S, recs = [], byId = {}, pins = [], tab = 'law', sel = 0, view = [], tokens = [], errors = [], updated = 0;
+
+function setData(d) {
+  recs = Core.buildIndex(d.records); byId = {}; recs.forEach((r) => (byId[r.id] = r));
+  errors = d.errors || []; updated = d.updated || 0; render();
+}
+const hash = (r) => r.lines.join('|');
+const pinned = (id) => pins.some((p) => p.id === id);
+const cur = (p) => byId[p.id] || p; // свежая версия, если есть
+
+function compute() {
+  const q = $('#q').value.trim();
+  let pool = tab === 'pins' ? pins.map((p) => Core.buildIndex([{ ...cur(p) }])[0]) : recs.filter((r) => r.kind === tab);
+  if (!q) { tokens = []; view = pool.slice(0, 120); return { partial: false }; }
+  const res = Core.search(pool, q, 120);
+  tokens = res.tokens; view = res.items; return res;
+}
+function stars(n) { return n ? '<span class="st">' + '★'.repeat(n) + '</span>' : ''; }
+
+function render() {
+  const res = compute();
+  if (sel >= view.length) sel = Math.max(0, view.length - 1);
+  $('#pc').textContent = pins.length ? '(' + pins.length + ')' : '';
+  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
+  const L = $('#list');
+  if (!view.length) {
+    let m = 'Ничего не найдено. Попробуйте номер статьи или часть слова.';
+    if (tab === 'pins' && !pins.length) m = 'Памятка пуста. Откройте статью и нажмите «В памятку» (Ctrl+D).';
+    else if (tab === 'rule' && !recs.some((r) => r.kind === 'rule')) {
+      m = S.rules.length ? 'Правила загружаются или не удалось их прочитать.' : 'Правил пока нет. Добавьте ссылки на темы форума в настройках (⚙).';
+      if (S.rules.length && errors.length) m += '<br><br>' + errors.filter((e) => S.rules.some((r) => e.startsWith(r.name + ':'))).map(esc).join('<br>');
+    }
+    else if (!recs.length) m = 'Данные ещё загружаются — это нужно только при первом запуске.';
+    L.innerHTML = '<div class="empty">' + m + '</div>';
+  } else {
+    L.innerHTML = (res.partial ? '<div class="empty" style="padding:6px 10px">Точных совпадений нет — показаны частичные</div>' : '') +
+      view.map((r, i) => `<div class="it${i === sel ? ' sel' : ''}" data-i="${i}"><div class="h"><span>${esc(r.num)} <small>${esc(r.doc)}</small></span>${stars(r.stars)}</div><div class="t">${hl(esc(r.title))}</div></div>`).join('');
+  }
+  detail();
+  const bad = errors.length ? ' · ошибок: ' + errors.length : '';
+  $('#upd').textContent = ('v' + VER + ' · ' + (updated ? 'Обновлено ' + new Date(updated).toLocaleString('ru', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Нет данных') + bad);
+  $('#upd').title = errors.join('\n');
+}
+function hl(html) {
+  const st = tokens.filter((t) => !Core.isNum(t)).map((t) => Core.stem(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/е/g, '[её]'));
+  if (!st.length) return html;
+  return html.replace(new RegExp('(?<![а-яёa-z0-9])(' + st.join('|') + ')[а-яёa-z0-9]*', 'gi'), '<mark>$&</mark>');
+}
+function detail() {
+  const D = $('#det'), r = view[sel];
+  if (!r) { D.innerHTML = ''; return; }
+  const p = pins.find((x) => x.id === r.id);
+  const changed = p && hash(p) !== hash(r);
+  const body = r.lines.map((l, i) => {
+    const c = i === 0 ? 'lead' : /^Наказание/i.test(l) ? 'pen' : /^(Примечание|Исключение|Пояснение)/i.test(l) ? 'note' : '';
+    return `<p class="${c}">${hl(esc(l)).replace(/(★+)/g, '<span class="st">$1</span>')}</p>`;
+  }).join('');
+  D.innerHTML = `<h2>${esc(r.doc)} ${esc(r.num)} ${stars(r.stars)}</h2><div class="meta">${esc(r.docTitle)}${r.chapter ? ' · ' + esc(r.chapter) : ''}</div>
+  <div class="row"><button class="btn${p ? ' on' : ''}" id="pin">${p ? '✓ В памятке' : 'В памятку'} (Ctrl+D)</button>${r.origin ? '<button class="btn" id="orig">Открыть на форуме</button>' : ''}</div>
+  ${changed ? '<div class="warn">Текст изменился с момента закрепления — ниже актуальная версия. Нажмите «В памятку» дважды, чтобы обновить закреплённую копию.</div>' : ''}${body}`;
+  $('#pin').onclick = togglePin;
+  if ($('#orig')) $('#orig').onclick = () => api.open(r.origin);
+  D.scrollTop = 0;
+}
+function togglePin() {
+  const r = view[sel]; if (!r) return;
+  pins = pinned(r.id) ? pins.filter((p) => p.id !== r.id)
+    : [...pins, { id: r.id, kind: r.kind, doc: r.doc, docTitle: r.docTitle, num: r.num, title: r.title, chapter: r.chapter, lines: r.lines, origin: r.origin, stars: r.stars }];
+  api.savePins(pins); render();
+}
+function selectIdx(i) { sel = Math.max(0, Math.min(view.length - 1, i)); render(); const e = document.querySelector('.it.sel'); if (e) e.scrollIntoView({ block: 'nearest' }); }
+
+// ---- события ----
+$('#q').oninput = () => { sel = 0; render(); };
+$('#list').onclick = (e) => { const it = e.target.closest('.it'); if (it) selectIdx(+it.dataset.i); };
+document.querySelectorAll('.tab').forEach((b) => (b.onclick = () => { tab = b.dataset.t; sel = 0; render(); $('#q').focus(); }));
+$('#rf').onclick = () => api.refresh();
+$('#min').onclick = () => api.hide();
+$('#x').onclick = () => api.quit();
+document.addEventListener('keydown', (e) => {
+  if ($('#modal').classList.contains('on')) { if (e.key === 'Escape') $('#modal').classList.remove('on'); return; }
+  if (e.key === 'Escape') { if ($('#q').value) { $('#q').value = ''; sel = 0; render(); } else api.hide(); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); selectIdx(sel + 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); selectIdx(sel - 1); }
+  else if (e.ctrlKey && e.code === 'KeyD') { e.preventDefault(); togglePin(); }
+  else if (e.ctrlKey && /^Digit[123]$/.test(e.code)) { tab = ['law', 'rule', 'pins'][+e.code.slice(5) - 1]; sel = 0; render(); }
+  else if (e.ctrlKey && e.code === 'KeyF') $('#q').focus();
+  else if (!e.ctrlKey && !e.altKey && e.key.length === 1 && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') $('#q').focus();
+});
+
+// ---- настройки ----
+$('#gear').onclick = () => {
+  $('#s-server').value = S.server; $('#s-src').value = S.lawSource; $('#s-key').value = S.hotkey; $('#s-op').value = S.opacity; $('#s-upurl').value = S.updateUrl || ''; $('#s-path').value = DIR;
+  $('#s-rules').value = S.rules.map((r) => r.name + ' | ' + r.url).join('\n');
+  $('#modal').classList.add('on');
+};
+$('#s-upfile').onclick = () => { $('#modal').classList.remove('on'); api.updateZip(''); };
+$('#s-open').onclick = () => api.openData();
+$('#s-clear').onclick = () => { $('#modal').classList.remove('on'); api.clearCache(); };
+$('#s-cancel').onclick = () => $('#modal').classList.remove('on');
+$('#s-key').onkeydown = (e) => {
+  e.preventDefault();
+  const m = []; if (e.ctrlKey) m.push('Control'); if (e.altKey) m.push('Alt'); if (e.shiftKey) m.push('Shift'); if (e.metaKey) m.push('Super');
+  let k = e.code.startsWith('Key') ? e.code.slice(3) : e.code.startsWith('Digit') ? e.code.slice(5) : /^F\d+$/.test(e.code) ? e.code : e.code === 'Space' ? 'Space' : e.code === 'Backquote' ? '`' : '';
+  if (m.length && k) $('#s-key').value = [...m, k].join('+');
+};
+$('#s-save').onclick = async () => {
+  const rules = $('#s-rules').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const i = l.lastIndexOf('|'); const url = (i < 0 ? l : l.slice(i + 1)).trim(); const name = i < 0 ? 'Правила' : l.slice(0, i).trim();
+    return { name, url };
+  }).filter((r) => /^https?:\/\//.test(r.url));
+  S = await api.saveSettings({ server: $('#s-server').value.trim() || 'los-angeles', lawSource: $('#s-src').value, hotkey: $('#s-key').value || S.hotkey, opacity: +$('#s-op').value, updateUrl: $('#s-upurl').value.trim(), rules });
+  $('#modal').classList.remove('on');
+};
+
+(async () => {
+  const st = await api.state(); S = st.settings; VER = st.version; DIR = st.dataDir; pins = st.pins; setData(st.data);
+  api.on('data', setData);
+  api.on('update', (u) => { const b = $('#ub'); b.style.display = ''; b.textContent = 'Доступна версия ' + u.version + ' — обновить'; b.onclick = () => { b.disabled = true; api.updateNow(); }; });
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', (e) => { e.preventDefault(); const f = [...e.dataTransfer.files].find((x) => /\.zip$/i.test(x.name)); if (f) api.updateZip(api.pathOf(f)); });
+  api.on('status', (s) => { $('#msg').textContent = s.msg; });
+  api.on('shown', () => { $('#q').focus(); $('#q').select(); });
+  $('#q').focus();
+})();
+</script></body></html>
