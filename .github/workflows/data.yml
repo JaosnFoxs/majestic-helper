@@ -1,0 +1,29 @@
+name: Data
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  snapshot:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - name: Previous snapshot
+        shell: pwsh
+        run: |
+          try { Invoke-WebRequest "https://github.com/${{ github.repository }}/releases/download/data/snapshot.json" -OutFile app/snapshot.json } catch { Write-Host "no previous snapshot" }
+      - run: npm run snapshot
+      - name: Publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view data 2>$null
+          if ($LASTEXITCODE -ne 0) { gh release create data --prerelease --title "Data" --notes "Автоматически обновляемая база законов и правил" }
+          gh release upload data app/snapshot.json --clobber
